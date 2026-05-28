@@ -42,7 +42,7 @@ function CheckoutPage() {
               const verifyRes = await authFetch(`${BASEURL}/api/orders/verify-payment/`, {
                 method: "POST",
                 body: JSON.stringify({
-                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_order_id: response.razorpay_order_id || data.razorpay_order_id,
                   razorpay_payment_id: response.razorpay_payment_id,
                   razorpay_signature: response.razorpay_signature,
                 }),
@@ -51,7 +51,7 @@ function CheckoutPage() {
               if (verifyRes.ok) {
                 clearCart();
                 alert("Payment successful! Order placed.");
-                nav("/");
+                nav("/orders");
               } else {
                 alert(verifyData.error || "Payment verification failed");
               }
@@ -69,7 +69,7 @@ function CheckoutPage() {
         } else {
           clearCart();
           alert("Order placed successfully!");
-          nav("/");
+          nav("/orders");
         }
       } else {
         alert(data.error || "Order failed");

@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 
 function VerifyEmail() {
   const { token } = useParams();
   const BASE = import.meta.env.VITE_DJANGO_BASE_URL;
   const [status, setStatus] = useState("loading"); // loading, success, error
   const [msg, setMsg] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
     const verify = async () => {
@@ -15,6 +16,13 @@ function VerifyEmail() {
         if (res.ok) {
           setStatus("success");
           setMsg(data.message || "Email verified successfully!");
+          
+          // Automatically redirect to login page after a brief delay
+          setTimeout(() => {
+            navigate("/login", { 
+              state: { message: data.message || "Email verified successfully! You can now login." } 
+            });
+          }, 1200);
         } else {
           setStatus("error");
           setMsg(data.error || "Invalid or expired verification link.");
@@ -27,7 +35,7 @@ function VerifyEmail() {
     };
 
     verify();
-  }, [token, BASE]);
+  }, [token, BASE, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6">

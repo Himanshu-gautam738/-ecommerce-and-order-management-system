@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { saveTokens } from "../utils/auth";
+import { useCart } from "../context/CartContext";
 
 function Login() {
   const BASE = import.meta.env.VITE_DJANGO_BASE_URL;
   const [form, setForm] = useState({ username: "", password: "" });
   const [msg, setMsg] = useState("");
-  const nav = useNavigate();
+  const { fetchCart } = useCart();
 
   const handleChange = e => setForm({...form, [e.target.name]: e.target.value});
 
@@ -23,8 +23,10 @@ function Login() {
       if (res.ok) {
         saveTokens(data);
         localStorage.setItem("username", form.username);
-        setMsg("Login successful!");
-        setTimeout(()=>nav("/"), 800);
+        fetchCart(); // Fetch user's cart immediately
+        setTimeout(() => {
+          window.location.href = "/";
+        }, 100);
       } else {
         setMsg(data.detail || "Invalid credentials");
       }
@@ -43,7 +45,7 @@ function Login() {
           <input name="password" type="password" onChange={handleChange} value={form.password} placeholder="Password" required className="w-full p-2 border rounded"/>
           <button className="w-full bg-blue-600 text-white py-2 rounded">Login</button>
         </form>
-        {msg && <p className="mt-3 text-sm">{msg}</p>}
+        {msg && <p className="mt-3 text-sm text-red-500 font-medium">{msg}</p>}
         <div className="mt-4 text-sm">
           Don't have an account?{" "}
           <a href="/signup" className="text-blue-600 hover:underline">

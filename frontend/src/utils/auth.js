@@ -12,10 +12,18 @@ export const clearTokens = () => {
 
 export const getAccessToken = () => localStorage.getItem("access_token");
 
-export const authFetch = (url, options = {}) => {
+export const authFetch = async (url, options = {}) => {
   const token = getAccessToken();
   const headers = options.headers ? {...options.headers} : {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
   headers['Content-Type'] = headers['Content-Type'] || 'application/json';
-  return fetch(url, {...options, headers});
+  
+  const res = await fetch(url, {...options, headers});
+  if (res.status === 401) {
+    clearTokens();
+    if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/signup')) {
+      window.location.href = '/login';
+    }
+  }
+  return res;
 };

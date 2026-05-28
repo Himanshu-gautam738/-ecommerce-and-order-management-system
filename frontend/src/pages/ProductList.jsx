@@ -11,6 +11,7 @@ function ProductList() {
     const [selectedCategory, setSelectedCategory] = useState("ALL");
     const [selectedBrand, setSelectedBrand] = useState("ALL");
     const [priceRange, setPriceRange] = useState([0, 999999]);
+    const [sortBy, setSortBy] = useState("");
 
     const BASEURL = import.meta.env.VITE_DJANGO_BASE_URL;
 
@@ -57,6 +58,7 @@ function ProductList() {
         setSelectedCategory("ALL");
         setSelectedBrand("ALL");
         setPriceRange([0, 999999]);
+        setSortBy("");
     };
 
     const filteredProducts = products.filter(product => {
@@ -65,6 +67,16 @@ function ProductList() {
         const matchesBrand = selectedBrand === "ALL" || extractBrand(product.name) === selectedBrand;
         const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
         return matchesSearch && matchesCategory && matchesBrand && matchesPrice;
+    });
+
+    const sortedProducts = [...filteredProducts].sort((a, b) => {
+        if (sortBy === "low-to-high") {
+            return Number(a.price) - Number(b.price);
+        }
+        if (sortBy === "high-to-low") {
+            return Number(b.price) - Number(a.price);
+        }
+        return 0;
     });
 
     if (loading) {
@@ -168,15 +180,19 @@ function ProductList() {
                 {/* Products Grid */}
                 <div className="w-full flex-1">
                     <div className="flex justify-end mb-4">
-                        <select className="p-2 border border-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500">
-                            <option>Sort by price</option>
+                        <select 
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                            className="p-2 border border-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                        >
+                            <option value="">Sort by price</option>
                             <option value="low-to-high">Low to High</option>
                             <option value="high-to-low">High to Low</option>
                         </select>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
-                        {filteredProducts.length > 0 ? (
-                            filteredProducts.map((product) => (
+                        {sortedProducts.length > 0 ? (
+                            sortedProducts.map((product) => (
                                 <ProductCard key={product.id} product={product} />
                             ))
                         ) : (

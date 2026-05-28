@@ -4,9 +4,11 @@ import ProductDetails from "./pages/ProductDetails";
 import Nabvar from './components/Navbar';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
+import OrdersPage from './pages/OrdersPage';
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import PrivateRouter from './components/PrivateRouter';
+import VerifyEmail from './pages/VerifyEmail';
 
 function App() {
     return (
@@ -18,9 +20,11 @@ function App() {
                 <Route path="/cart" element={<CartPage/>}/>
                 <Route element={<PrivateRouter/>}>
                     <Route path="/checkout" element={<CheckoutPage/>}/>
+                    <Route path="/orders" element={<OrdersPage/>}/>
                 </Route>
                 <Route path="/login" element={<Login/>} />
                 <Route path="/signup" element={<Signup/>} />
+                <Route path="/verify-email/:token" element={<VerifyEmail/>} />
             </Routes>
         </Router>
     );

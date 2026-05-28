@@ -4,8 +4,8 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth.models import User
 from .serializers import RegisterSerializer, UserSerializer
 from rest_framework import status
-from .models import Product, Category, Cart, CartItem, Order, OrderItem
-from .serializers import ProductSerializer, CategorySerializer, CartSerializer, CartItemSerializer
+from .models import Product, Category, Cart, CartItem, Order, OrderItem, EmailVerificationToken
+from .serializers import ProductSerializer, CategorySerializer, CartSerializer, CartItemSerializer, OrderSerializer
 import razorpay
 from django.conf import settings
 
@@ -112,8 +112,9 @@ def create_order(request):
                 quantity=item.quantity,
                 price=item.product.price
             )
-        # Clear the cart
-        cart.items.all().delete()
+        # Clear the cart if Cash on Delivery (COD)
+        if payment_method == 'COD':
+            cart.items.all().delete()
         
         if payment_method == 'ONLINE':
             client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
@@ -165,6 +166,10 @@ def verify_payment(request):
         order.razorpay_signature = razorpay_signature
         order.save()
 
+        # Clear the cart since payment succeeded
+        cart, created = Cart.objects.get_or_create(user=request.user)
+        cart.items.all().delete()
+
         return Response({'message': 'Payment verified successfully'})
     except Order.DoesNotExist:
         return Response({'error': 'Order not found'}, status=404)
@@ -178,7 +183,7 @@ def verify_payment(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_view(request):
-    serializer = RegisterSerializer(data=request.data)
+    serializer = RegisterSerializer(data=request.data, context={'request': request})
     if serializer.is_valid():
         user = serializer.save()
         return Response({
@@ -186,3 +191,109 @@ def register_view(request):
             "user": UserSerializer(user).data
         }, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_orders(request):
+    try:
+        orders = Order.objects.filter(user=request.user).order_by('-created_at')
+        serializer = OrderSerializer(orders, many=True)
+        return Response(serializer.data)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def cancel_order(request, pk):
+    try:
+        order = Order.objects.get(id=pk, user=request.user)
+        if order.payment_status == 'Cancelled':
+            return Response({'error': 'Order is already cancelled'}, status=400)
+        
+        order.payment_status = 'Cancelled'
+        order.save()
+        return Response({'message': 'Order cancelled successfully'})
+    except Order.DoesNotExist:
+        return Response({'error': 'Order not found'}, status=404)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def verify_email(request, token):
+    from django.shortcuts import redirect
+    try:
+        vt = EmailVerificationToken.objects.get(token=token)
+        user = vt.user
+        user.is_active = True
+        user.save()
+        vt.delete()
+        
+        # Build frontend URL dynamically based on current backend host
+        host = request.get_host()
+        if '127.0.0.1' in host or 'localhost' in host:
+            frontend_host = 'localhost:5173'
+        elif ':8000' in host:
+            frontend_host = host.replace(':8000', ':5173')
+        else:
+            frontend_host = 'localhost:5173'
+        
+        scheme = 'https' if request.is_secure() else 'http'
+        frontend_url = f"{scheme}://{frontend_host}/login"
+        return redirect(frontend_url)
+    except EmailVerificationToken.DoesNotExist:
+        host = request.get_host()
+        if '127.0.0.1' in host or 'localhost' in host:
+            frontend_host = 'localhost:5173'
+        elif ':8000' in host:
+            frontend_host = host.replace(':8000', ':5173')
+        else:
+            frontend_host = 'localhost:5173'
+        
+        scheme = 'https' if request.is_secure() else 'http'
+        frontend_url = f"{scheme}://{frontend_host}/login"
+        return redirect(frontend_url)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def cancel_registration(request, token):
+    from django.shortcuts import redirect
+    try:
+        vt = EmailVerificationToken.objects.get(token=token)
+        user = vt.user
+        # Deleting user cascades to automatically delete the token too
+        user.delete()
+        
+        # Build frontend URL dynamically based on current backend host
+        host = request.get_host()
+        if '127.0.0.1' in host or 'localhost' in host:
+            frontend_host = 'localhost:5173'
+        elif ':8000' in host:
+            frontend_host = host.replace(':8000', ':5173')
+        else:
+            frontend_host = 'localhost:5173'
+        
+        scheme = 'https' if request.is_secure() else 'http'
+        frontend_url = f"{scheme}://{frontend_host}/signup"
+        return redirect(frontend_url)
+    except EmailVerificationToken.DoesNotExist:
+        host = request.get_host()
+        if '127.0.0.1' in host or 'localhost' in host:
+            frontend_host = 'localhost:5173'
+        elif ':8000' in host:
+            frontend_host = host.replace(':8000', ':5173')
+        else:
+            frontend_host = 'localhost:5173'
+        
+        scheme = 'https' if request.is_secure() else 'http'
+        frontend_url = f"{scheme}://{frontend_host}/signup"
+        return redirect(f"{frontend_url}?error=invalid_token")
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def check_verification_status(request, username):
+    try:
+        user = User.objects.get(username=username)
+        return Response({"is_active": user.is_active})
+    except User.DoesNotExist:
+        return Response({"error": "User not found"}, status=404)

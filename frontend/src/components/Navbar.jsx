@@ -3,7 +3,7 @@ import {useCart} from '../context/CartContext.jsx';
 import { clearTokens, getAccessToken } from '../utils/auth.js';
 
 function Navbar() {
-    const {cartItems} = useCart();
+    const {cartItems, clearCart} = useCart();
     const navigate = useNavigate();
     
     const cartCount = cartItems.reduce((total, item) => total + item.quantity, 0);
@@ -12,6 +12,7 @@ function Navbar() {
 
     const handleLogout = () => {
         clearTokens();
+        clearCart();
         navigate('/login');
     };
     const username = localStorage.getItem("username") || "User";
@@ -29,6 +30,11 @@ function Navbar() {
                 <Link to='/' className='text-gray-800 hover:text-gray-600 font-medium'>
                     Products
                 </Link>
+                {isLoggedIn && (
+                    <Link to='/orders' className='text-gray-800 hover:text-gray-600 font-medium'>
+                        Orders
+                    </Link>
+                )}
 
                 {isLoggedIn && (
                     <span className='text-gray-800 font-medium'>
